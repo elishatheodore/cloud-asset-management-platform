@@ -1,0 +1,6 @@
+"""
+API module for CAMP backend.
+"""
+from app.api.assets import router as assets_router
+
+__all__ = ["assets_router"]
