@@ -13,6 +13,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 import os
 
 from app.api.assets import router as assets_router
+# from app.auth.router import router as auth_router
 from app.core.config import settings
 from app.core.logging import setup_logging, get_logger
 from app.core.middleware import ErrorResponseMiddleware
@@ -61,7 +62,7 @@ app.add_middleware(
 )
 
 # Include routers
-# app.include_router(auth_router, prefix=settings.api_v1_prefix, tags=["Authentication"])
+# app.include_router(auth_router, prefix="/api/v1", tags=["Authentication"])
 app.include_router(assets_router, prefix=settings.api_v1_prefix, tags=["Assets"])
 
 # Mount static files for uploads

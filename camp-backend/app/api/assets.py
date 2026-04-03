@@ -41,7 +41,7 @@ ALLOWED_FILE_TYPES = [
 ]
 
 
-# Dependency to get current user (optional for development)
+# Dependency to get current user from auth service
 async def get_current_user(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
@@ -63,15 +63,16 @@ async def get_current_user(
     )
     
     try:
+        from app.auth.security import verify_token
         payload = verify_token(token)
         if payload is None:
             raise credentials_exception
         
-        # For demo purposes, we'll create a mock user
-        # In production, this would query the database
+        # For demo purposes, return mock user data
+        # In production with full auth service, this would validate against auth database
         user_data = {
             "sub": payload.get("sub", "unknown"),
-            "email": payload.get("sub", "unknown"),
+            "email": f"{payload.get('sub', 'unknown')}@example.com",
             "is_active": True,
             "role": "user"
         }

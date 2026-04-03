@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CAMP - Login | Cloud Asset Management Platform</title>
+    <meta name="description" content="Login to Cloud Asset Management Platform - Secure File Storage & Management">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="login-page">
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-header">
+                <div class="login-logo" role="img" aria-label="Cloud icon">
+                    <i class="fas fa-cloud"></i>
+                </div>
+                <h1>Cloud Asset Management</h1>
+                <p>Secure File Storage & Management</p>
+            </div>
+            
+            <div class="login-form-container">
+                <form id="loginForm" class="login-form" novalidate>
+                    <fieldset>
+                        <legend class="sr-only">Login credentials</legend>
+                        
+                        <div class="form-group">
+                            <label for="username" class="form-label">
+                                <i class="fas fa-user" aria-hidden="true"></i>
+                                Username
+                            </label>
+                            <input 
+                                id="username" 
+                                name="username" 
+                                type="text" 
+                                required
+                                aria-required="true"
+                                aria-describedby="username-error"
+                                class="form-input"
+                                placeholder="Enter your username"
+                                autocomplete="username"
+                                maxlength="50"
+                                pattern="[a-zA-Z0-9_]+"
+                                title="Username can only contain letters, numbers, and underscores"
+                            >
+                            <div id="username-error" class="sr-only" role="alert" aria-live="polite"></div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="password" class="form-label">
+                                <i class="fas fa-lock" aria-hidden="true"></i>
+                                Password
+                            </label>
+                            <input 
+                                id="password" 
+                                name="password" 
+                                type="password" 
+                                required
+                                aria-required="true"
+                                aria-describedby="password-error"
+                                class="form-input"
+                                placeholder="Enter your password"
+                                autocomplete="current-password"
+                                maxlength="128"
+                                minlength="6"
+                                title="Password must be at least 6 characters long"
+                            >
+                            <div id="password-error" class="sr-only" role="alert" aria-live="polite"></div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-full-width" aria-describedby="login-status">
+                            <i class="fas fa-sign-in-alt" aria-hidden="true"></i>
+                            <span class="btn-text">Sign in</span>
+                        </button>
+                        
+                        <div id="login-status" class="sr-only" role="status" aria-live="polite"></div>
+                    </fieldset>
+                </form>
+
+                <!-- Message Container -->
+                <div id="messageContainer" class="message-container hidden" role="alert" aria-live="assertive">
+                    <div id="messageContent" class="message-content"></div>
+                </div>
+
+                <!-- Demo Credentials Info -->
+                <div class="demo-credentials" role="complementary" aria-label="Demo credentials for testing">
+                    <p class="demo-title">Demo Credentials:</p>
+                    <div class="demo-info">
+                        <div class="demo-item">
+                            <span class="demo-label">Username:</span>
+                            <code class="demo-value" aria-label="Demo username">admin</code>
+                        </div>
+                        <div class="demo-item">
+                            <span class="demo-label">Password:</span>
+                            <code class="demo-value" aria-label="Demo password">admin123</code>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
