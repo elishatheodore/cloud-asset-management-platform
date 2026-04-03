@@ -1,8 +1,15 @@
-// Simple Cloud Asset Management Platform
-const API_BASE_URL = 'http://localhost:8000/api/v1';
+/**
+ * Cloud Asset Management Platform - Frontend Application
+ * Updated with robust API client and centralized configuration
+ */
 
+import { API_ENDPOINTS, CONFIG, API_CONFIG, ERROR_MESSAGES } from './config.js';
+import { api } from './api-client.js';
+
+// Application state
 let selectedFile = null;
 let files = [];
+let isUploading = false;
 
 // Notification system
 function showNotification(message, type = 'info') {
@@ -22,13 +29,19 @@ function showNotification(message, type = 'info') {
     }, 5000);
 }
 
-// API functions
+// API functions with robust error handling
 async function checkHealth() {
     try {
-        const response = await fetch(`${API_BASE_URL}/`);
-        const data = await response.json();
-        showNotification(`API is healthy: ${data.status}`, 'success');
+        showNotification('Checking API health...', 'info');
+        const result = await api.healthCheck();
+        
+        if (result.healthy) {
+            showNotification(`API is healthy: ${result.status} (v${result.version})`, 'success');
+        } else {
+            showNotification(`Health check failed: ${result.error}`, 'error');
+        }
     } catch (error) {
+        console.error('Health check failed:', error);
         showNotification(`Health check failed: ${error.message}`, 'error');
     }
 }
@@ -41,14 +54,22 @@ async function listFiles() {
     filesGrid.innerHTML = '';
     
     try {
-        const response = await fetch(`${API_BASE_URL}/files`);
-        const data = await response.json();
-        files = data.assets || [];
+        const result = await api.get(API_ENDPOINTS.ASSETS_LIST);
         
-        displayFiles();
-        showNotification(`Loaded ${files.length} files`, 'success');
+        if (result.success) {
+            files = result.data.assets || [];
+            displayFiles();
+            showNotification(`Loaded ${files.length} files`, 'success');
+        } else {
+            showNotification(`Failed to load files: ${result.error}`, 'error');
+            files = [];
+            displayFiles();
+        }
     } catch (error) {
+        console.error('Failed to load files:', error);
         showNotification(`Failed to load files: ${error.message}`, 'error');
+        files = [];
+        displayFiles();
     } finally {
         loadingState.style.display = 'none';
     }
@@ -117,8 +138,15 @@ function handleFileSelect(event) {
 }
 
 function selectFile(file) {
-    if (file.size > 50 * 1024 * 1024) {
-        showNotification('File size must be less than 50MB', 'error');
+    // Validate file size
+    if (file.size > API_CONFIG.MAX_FILE_SIZE) {
+        showNotification(`File size must be less than ${API_CONFIG.MAX_FILE_SIZE / (1024 * 1024)}MB`, 'error');
+        return;
+    }
+    
+    // Validate file type
+    if (!API_CONFIG.ALLOWED_FILE_TYPES.includes(file.type)) {
+        showNotification(`File type ${file.type} is not allowed`, 'error');
         return;
     }
     
@@ -152,26 +180,36 @@ async function uploadFile() {
         return;
     }
     
-    const formData = new FormData();
-    formData.append('file', selectedFile);
+    if (isUploading) {
+        showNotification('Upload already in progress...', 'warning');
+        return;
+    }
+    
+    isUploading = true;
     
     try {
-        const response = await fetch(`${API_BASE_URL}/upload`, {
-            method: 'POST',
-            body: formData
-        });
+        showNotification('Uploading file...', 'info');
         
-        if (response.ok) {
-            const data = await response.json();
-            showNotification(`File "${data.filename}" uploaded successfully`, 'success');
+        const result = await api.uploadFile(
+            API_ENDPOINTS.ASSET_UPLOAD, 
+            selectedFile,
+            (progress) => {
+                showNotification(`Uploading: ${Math.round(progress)}%`, 'info');
+            }
+        );
+        
+        if (result.success) {
+            showNotification(`File "${result.data.filename}" uploaded successfully`, 'success');
             clearFileSelection();
             listFiles(); // Refresh file list
         } else {
-            const errorData = await response.json();
-            showNotification(`Upload failed: ${errorData.error || 'Unknown error'}`, 'error');
+            showNotification(`Upload failed: ${result.error}`, 'error');
         }
     } catch (error) {
+        console.error('Upload failed:', error);
         showNotification(`Upload failed: ${error.message}`, 'error');
+    } finally {
+        isUploading = false;
     }
 }
 
@@ -253,22 +291,17 @@ function editFile(id, currentName) {
 
 async function updateFile(id, filename) {
     try {
-        const response = await fetch(`${API_BASE_URL}/files/${id}`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ filename })
-        });
+        showNotification('Updating file...', 'info');
+        const result = await api.put(API_ENDPOINTS.ASSET_UPDATE(id), { filename });
         
-        if (response.ok) {
+        if (result.success) {
             showNotification('File renamed successfully', 'success');
             listFiles(); // Refresh file list
         } else {
-            const errorData = await response.json();
-            showNotification(`Rename failed: ${errorData.error || 'Unknown error'}`, 'error');
+            showNotification(`Rename failed: ${result.error}`, 'error');
         }
     } catch (error) {
+        console.error('Rename failed:', error);
         showNotification(`Rename failed: ${error.message}`, 'error');
     }
 }
@@ -330,18 +363,17 @@ function deleteFile(id, filename) {
 
 async function confirmDelete(id) {
     try {
-        const response = await fetch(`${API_BASE_URL}/files/${id}`, {
-            method: 'DELETE'
-        });
+        showNotification('Deleting file...', 'info');
+        const result = await api.delete(API_ENDPOINTS.ASSET_DELETE(id));
         
-        if (response.ok) {
+        if (result.success) {
             showNotification('File deleted successfully', 'success');
             listFiles(); // Refresh file list
         } else {
-            const errorData = await response.json();
-            showNotification(`Delete failed: ${errorData.error || 'Unknown error'}`, 'error');
+            showNotification(`Delete failed: ${result.error}`, 'error');
         }
     } catch (error) {
+        console.error('Delete failed:', error);
         showNotification(`Delete failed: ${error.message}`, 'error');
     }
 }
@@ -377,95 +409,6 @@ function preventDefaults(e) {
     e.stopPropagation();
 }
 
-// Test if uploads directory is accessible and test image loading
-async function testUploadsAccess() {
-    try {
-        console.log('🔍 Starting comprehensive image loading test...');
-        
-        // Test 1: Backend health
-        try {
-            const healthResponse = await fetch('http://localhost:8000/api/v1/');
-            if (healthResponse.ok) {
-                console.log('✅ Backend health check passed');
-            } else {
-                console.error('❌ Backend health check failed:', healthResponse.status);
-            }
-        } catch (error) {
-            console.error('❌ Backend connection failed:', error.message);
-            showNotification('Backend server is not running on port 8000', 'error');
-            return;
-        }
-        
-        // Test 2: API files
-        try {
-            const apiResponse = await fetch('http://localhost:8000/api/v1/files');
-            if (apiResponse.ok) {
-                const data = await apiResponse.json();
-                console.log('✅ API files endpoint working');
-                console.log(`📁 Found ${data.total} files`);
-                
-                const imageFiles = data.assets.filter(f => f.content_type && f.content_type.startsWith('image/'));
-                console.log(`🖼️ Found ${imageFiles.length} image files`);
-                
-                if (imageFiles.length > 0) {
-                    // Test first image
-                    const testFile = imageFiles[0];
-                    const filename = testFile.file_path.split(/[\\\/]/).pop();
-                    const testUrl = `http://localhost:8000/uploads/${filename}`;
-                    
-                    console.log('🔍 Testing image URL:', testUrl);
-                    
-                    const imgResponse = await fetch(testUrl);
-                    if (imgResponse.ok) {
-                        console.log('✅ Image URL accessible');
-                        const blob = await imgResponse.blob();
-                        console.log(`📊 Image size: ${blob.size} bytes`);
-                        console.log(`📊 Image type: ${blob.type}`);
-                    } else {
-                        console.error('❌ Image URL failed:', imgResponse.status);
-                        const errorText = await imgResponse.text();
-                        console.error('Error details:', errorText);
-                    }
-                } else {
-                    console.log('ℹ️ No image files found to test');
-                }
-            } else {
-                console.error('❌ API files endpoint failed:', apiResponse.status);
-            }
-        } catch (error) {
-            console.error('❌ API test failed:', error.message);
-        }
-        
-        // Test 3: Uploads directory
-        try {
-            const uploadsResponse = await fetch('http://localhost:8000/uploads/');
-            if (uploadsResponse.ok) {
-                console.log('✅ Uploads directory accessible');
-            } else {
-                console.error('❌ Uploads directory not accessible:', uploadsResponse.status);
-            }
-        } catch (error) {
-            console.error('❌ Uploads directory test failed:', error.message);
-        }
-        
-        console.log('🔍 Test complete. Check console for details.');
-        
-    } catch (error) {
-        console.error('❌ Comprehensive test failed:', error);
-    }
-}
-
-// Add test function to global scope
-window.testUploadsAccess = testUploadsAccess;
-
-// Add simple image test function
-window.testImage = function(filename) {
-    const url = `http://localhost:8000/uploads/${filename}`;
-    console.log('Testing image:', url);
-    
-    // Open in new tab
-    window.open(url, '_blank');
-};
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', function() {
@@ -474,11 +417,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // Set up file input
     document.getElementById('file-input').addEventListener('change', handleFileSelect);
     
-    // Show initial message
-    showNotification('Welcome to Cloud Asset Management Platform', 'info');
+    // Show welcome message
+    showNotification('Welcome to Cloud Asset Management Platform!', 'info');
     
-    // Test uploads access after a short delay
-    setTimeout(testUploadsAccess, 2000);
+    // Load files on startup
+    listFiles();
 });
 
 // Global functions for onclick handlers

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Simple web server to serve the frontend
+Simple web server to serve frontend
 """
 import http.server
 import socketserver
@@ -12,7 +12,7 @@ from pathlib import Path
 frontend_dir = Path(__file__).parent
 os.chdir(frontend_dir)
 
-PORT = 3000
+PORT = 3004
 Handler = http.server.SimpleHTTPRequestHandler
 
 class CustomHandler(Handler):
@@ -25,6 +25,12 @@ class CustomHandler(Handler):
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
         self.send_header('Access-Control-Allow-Headers', 'Content-Type')
         super().end_headers()
+    
+    def do_GET(self):
+        # Default to index.html for root path
+        if self.path == '/':
+            self.path = '/index.html'
+        return super().do_GET()
 
 def run_server():
     """Run the frontend development server"""
@@ -35,6 +41,8 @@ def run_server():
             print(f"   http://127.0.0.1:{PORT}")
             print(f"")
             print(f"📁 Serving directory: {frontend_dir}")
+            print(f"")
+            print(f"🔐 Authentication required - visit http://localhost:{PORT}")
             print(f"")
             print(f"🔗 Backend API: http://localhost:8000")
             print(f"")

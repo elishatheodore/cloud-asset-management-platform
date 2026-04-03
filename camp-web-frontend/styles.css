@@ -1,4 +1,4 @@
-/* Simple CSS for Cloud Asset Management Platform */
+/* Cloud Asset Management Platform - Frontend Styles */
 
 * {
     margin: 0;
@@ -83,6 +83,17 @@ body {
 .btn-secondary:hover {
     background: #16213e;
     border-color: #16213e;
+}
+
+.btn-info {
+    background: #17a2b8;
+    color: white;
+    border: 1px solid #17a2b8;
+}
+
+.btn-info:hover {
+    background: #138496;
+    border-color: #138496;
 }
 
 .btn-danger {
@@ -438,14 +449,58 @@ body {
 
 /* Utility Classes */
 .hidden {
-    display: none;
+    display: none !important;
 }
 
 .text-center {
     text-align: center;
 }
 
+.text-muted {
+    color: #a8a8a8;
+}
+
+.mb-1 { margin-bottom: 0.5rem; }
+.mb-2 { margin-bottom: 1rem; }
+.mb-3 { margin-bottom: 1.5rem; }
+.mt-1 { margin-top: 0.5rem; }
+.mt-2 { margin-top: 1rem; }
+.mt-3 { margin-top: 1.5rem; }
+
+/* Loading Animation */
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.fa-spin {
+    animation: spin 1s linear infinite;
+}
+
+/* Focus States */
+.btn:focus {
+    outline: 2px solid #f39c12;
+    outline-offset: 2px;
+}
+
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Smooth Transitions */
+* {
+    transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+}
+
 /* Responsive Design */
+@media (max-width: 1200px) {
+    .app-container {
+        max-width: 100%;
+        padding: 0 15px;
+    }
+}
+
 @media (max-width: 768px) {
     .header-content {
         flex-direction: column;
@@ -455,6 +510,7 @@ body {
     
     .header-actions {
         justify-content: center;
+        flex-wrap: wrap;
     }
     
     .file-selection {
@@ -467,11 +523,43 @@ body {
     }
     
     .notifications-container {
-        left: 20px;
-        right: 20px;
+        left: 15px;
+        right: 15px;
     }
     
     .notification {
         min-width: auto;
+    }
+    
+    .upload-area {
+        padding: 2rem 1rem;
+    }
+    
+    .custom-modal-content {
+        min-width: auto;
+        margin: 0 15px;
+    }
+}
+
+@media (max-width: 480px) {
+    .header-title h1 {
+        font-size: 1.5rem;
+    }
+    
+    .btn {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.8rem;
+    }
+    
+    .card-header {
+        padding: 1rem;
+    }
+    
+    .card-body {
+        padding: 1rem;
+    }
+    
+    .file-card {
+        padding: 0.75rem;
     }
 }

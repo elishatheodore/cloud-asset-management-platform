@@ -2,6 +2,7 @@
 Main FastAPI application for Cloud Asset Management Platform (CAMP).
 """
 from contextlib import asynccontextmanager
+from datetime import datetime
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -40,7 +41,8 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
-    description="A production-ready backend for managing cloud assets",
+    description="Main FastAPI application.",
+    debug=settings.debug,
     lifespan=lifespan,
     docs_url="/docs" if settings.debug else None,
     redoc_url="/redoc" if settings.debug else None,
@@ -59,6 +61,7 @@ app.add_middleware(
 )
 
 # Include routers
+# app.include_router(auth_router, prefix=settings.api_v1_prefix, tags=["Authentication"])
 app.include_router(assets_router, prefix=settings.api_v1_prefix, tags=["Assets"])
 
 # Mount static files for uploads
@@ -76,11 +79,47 @@ else:
 
 @app.get("/")
 async def root():
-    """Root endpoint."""
+    """Root endpoint with basic health information."""
     return {
         "message": "Cloud Asset Management Platform (CAMP)",
         "version": settings.app_version,
-        "status": "running"
+        "status": "running",
+        "auth_enabled": True,
+        "api_version": "v1",
+        "endpoints": {
+            "health": "/health",
+            "assets": "/api/v1/files",
+            "upload": "/api/v1/upload",
+            "docs": "/docs"
+        }
+    }
+
+@app.get("/health")
+async def health_check():
+    """Detailed health check endpoint."""
+    try:
+        # Check database connection
+        from app.db.database import engine
+        with engine.connect() as conn:
+            conn.execute("SELECT 1")
+        db_status = "healthy"
+    except Exception as e:
+        db_status = f"unhealthy: {str(e)}"
+    
+    # Check uploads directory
+    uploads_dir = os.path.join(os.getcwd(), "uploads")
+    uploads_accessible = os.path.exists(uploads_dir) and os.access(uploads_dir, os.R_OK | os.W_OK)
+    
+    return {
+        "status": "healthy" if db_status == "healthy" and uploads_accessible else "unhealthy",
+        "timestamp": datetime.utcnow().isoformat(),
+        "version": settings.app_version,
+        "checks": {
+            "database": db_status,
+            "uploads": "accessible" if uploads_accessible else "not accessible",
+            "api": "healthy"
+        },
+        "environment": "development" if settings.debug else "production"
     }
 
 @app.get("/debug/uploads")
