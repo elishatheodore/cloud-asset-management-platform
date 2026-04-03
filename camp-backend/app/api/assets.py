@@ -11,10 +11,24 @@ from app.schemas.asset import AssetResponse, AssetList, AssetUpdate, HealthCheck
 from app.core.exceptions import (
     AssetNotFoundException,
     InvalidFileException,
-    StorageOperationException
+    StorageOperationException,
+    FileSizeExceededException,
+    UnsupportedFileTypeException
 )
+from app.core.logging import get_logger
 
+logger = get_logger(__name__)
 router = APIRouter()
+
+# File upload configuration
+MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
+ALLOWED_FILE_TYPES = [
+    "image/jpeg", "image/png", "image/gif", "image/webp",
+    "application/pdf", "text/plain", "text/csv",
+    "application/json", "application/xml",
+    "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+]
 
 
 @router.get("/", response_model=HealthCheck)
@@ -52,17 +66,34 @@ async def upload_file(
         InvalidFileException: If file is invalid
         StorageOperationException: If storage operation fails
     """
+    # Validate file is provided
     if not file.filename:
+        logger.error("Upload attempt without filename")
         raise InvalidFileException("No filename provided")
     
+    # Validate file is not empty
     if file.size == 0:
+        logger.error(f"Upload attempt with empty file: {file.filename}")
         raise InvalidFileException("File is empty")
     
+    # Validate file size limit
+    if file.size > MAX_FILE_SIZE:
+        logger.error(f"File size exceeds limit: {file.filename}, size: {file.size}, max: {MAX_FILE_SIZE}")
+        raise FileSizeExceededException(MAX_FILE_SIZE, file.size)
+    
+    # Validate file type
+    if file.content_type and file.content_type not in ALLOWED_FILE_TYPES:
+        logger.error(f"Unsupported file type: {file.filename}, type: {file.content_type}")
+        raise UnsupportedFileTypeException(file.content_type, ALLOWED_FILE_TYPES)
+    
     try:
+        logger.info(f"Starting file upload: {file.filename}, size: {file.size}")
         asset_service = AssetService(db)
         asset = await asset_service.create_asset(file)
+        logger.info(f"Successfully uploaded file: {file.filename}, asset_id: {asset.id}")
         return asset
     except Exception as e:
+        logger.error(f"Failed to upload file {file.filename}: {str(e)}")
         raise StorageOperationException("upload", str(e))
 
 
@@ -82,6 +113,13 @@ async def list_files(db: Session = Depends(get_db)):
     return AssetList(assets=assets, total=len(assets))
 
 
+@router.get("/test-error")
+async def test_error():
+    """Test endpoint to trigger error handling."""
+    from app.core.exceptions import InvalidFileException
+    raise InvalidFileException("This is a test error")
+
+
 @router.delete("/files/{asset_id}")
 async def delete_file(asset_id: int, db: Session = Depends(get_db)):
     """
@@ -97,13 +135,22 @@ async def delete_file(asset_id: int, db: Session = Depends(get_db)):
     Raises:
         AssetNotFoundException: If asset not found
     """
-    asset_service = AssetService(db)
-    success = await asset_service.delete_asset(asset_id)
-    
-    if not success:
-        raise AssetNotFoundException(asset_id)
-    
-    return {"message": "Asset deleted successfully", "asset_id": asset_id}
+    try:
+        logger.info(f"Attempting to delete asset: {asset_id}")
+        asset_service = AssetService(db)
+        success = await asset_service.delete_asset(asset_id)
+        
+        if not success:
+            logger.error(f"Asset not found for deletion: {asset_id}")
+            raise AssetNotFoundException(asset_id)
+        
+        logger.info(f"Successfully deleted asset: {asset_id}")
+        return {"message": "Asset deleted successfully", "asset_id": asset_id}
+    except AssetNotFoundException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to delete asset {asset_id}: {str(e)}")
+        raise StorageOperationException("delete", str(e))
 
 
 @router.put("/files/{asset_id}", response_model=AssetResponse)
@@ -127,10 +174,19 @@ async def update_file(
         AssetNotFoundException: If asset not found
         StorageOperationException: If file rename fails
     """
-    asset_service = AssetService(db)
-    asset = await asset_service.update_asset(asset_id, asset_update.filename)
-    
-    if not asset:
-        raise AssetNotFoundException(asset_id)
-    
-    return asset
+    try:
+        logger.info(f"Attempting to update asset: {asset_id}, new filename: {asset_update.filename}")
+        asset_service = AssetService(db)
+        asset = await asset_service.update_asset(asset_id, asset_update.filename)
+        
+        if not asset:
+            logger.error(f"Asset not found for update: {asset_id}")
+            raise AssetNotFoundException(asset_id)
+        
+        logger.info(f"Successfully updated asset: {asset_id}")
+        return asset
+    except AssetNotFoundException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to update asset {asset_id}: {str(e)}")
+        raise StorageOperationException("update", str(e))

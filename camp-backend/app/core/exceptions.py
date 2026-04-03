@@ -52,3 +52,23 @@ class StorageOperationException(HTTPException):
             status_code=500,
             detail=f"Storage {operation} failed: {reason}"
         )
+
+
+class FileSizeExceededException(HTTPException):
+    """Exception raised when file size exceeds limit."""
+    
+    def __init__(self, max_size: int, actual_size: int):
+        super().__init__(
+            status_code=413,
+            detail=f"File size {actual_size} bytes exceeds maximum allowed size {max_size} bytes"
+        )
+
+
+class UnsupportedFileTypeException(HTTPException):
+    """Exception raised for unsupported file types."""
+    
+    def __init__(self, file_type: str, allowed_types: list[str]):
+        super().__init__(
+            status_code=415,
+            detail=f"File type '{file_type}' is not supported. Allowed types: {', '.join(allowed_types)}"
+        )
