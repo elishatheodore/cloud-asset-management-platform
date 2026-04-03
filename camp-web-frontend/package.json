@@ -1,0 +1,16 @@
+{
+  "name": "camp-frontend",
+  "version": "1.0.0",
+  "description": "Cloud Asset Management Platform Frontend",
+  "main": "index.html",
+  "scripts": {
+    "start": "python serve.py",
+    "serve": "python serve.py",
+    "dev": "python -m http.server 3000 --bind 0.0.0.0",
+    "test": "python -m http.server 3001 --bind 0.0.0.0"
+  },
+  "keywords": ["frontend", "web", "asset-management"],
+  "author": "CAMP Team",
+  "license": "MIT",
+  "dependencies": {}
+}

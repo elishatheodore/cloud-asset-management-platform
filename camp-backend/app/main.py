@@ -6,19 +6,15 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import ValidationError as PydanticValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
+import os
 
 from app.api.assets import router as assets_router
 from app.core.config import settings
 from app.core.logging import setup_logging, get_logger
-from app.core.error_handlers import (
-    http_exception_handler,
-    validation_exception_handler,
-    pydantic_validation_exception_handler,
-    general_exception_handler,
-    starlette_http_exception_handler
-)
+from app.core.middleware import ErrorResponseMiddleware
 from app.db.database import create_tables
 
 # Setup logging
@@ -50,26 +46,8 @@ app = FastAPI(
     redoc_url="/redoc" if settings.debug else None,
 )
 
-# Add exception handlers for consistent error responses
-@app.exception_handler(HTTPException)
-async def custom_http_exception_handler(request: Request, exc: HTTPException):
-    return await http_exception_handler(request, exc)
-
-@app.exception_handler(RequestValidationError)
-async def custom_validation_exception_handler(request: Request, exc: RequestValidationError):
-    return await validation_exception_handler(request, exc)
-
-@app.exception_handler(PydanticValidationError)
-async def custom_pydantic_validation_exception_handler(request: Request, exc: PydanticValidationError):
-    return await pydantic_validation_exception_handler(request, exc)
-
-@app.exception_handler(StarletteHTTPException)
-async def custom_starlette_exception_handler(request: Request, exc: StarletteHTTPException):
-    return await starlette_http_exception_handler(request, exc)
-
-@app.exception_handler(Exception)
-async def custom_general_exception_handler(request: Request, exc: Exception):
-    return await general_exception_handler(request, exc)
+# Add error response middleware for consistent formatting
+app.add_middleware(ErrorResponseMiddleware)
 
 # Add CORS middleware
 app.add_middleware(
@@ -83,6 +61,18 @@ app.add_middleware(
 # Include routers
 app.include_router(assets_router, prefix=settings.api_v1_prefix, tags=["Assets"])
 
+# Mount static files for uploads
+uploads_dir = os.path.join(os.getcwd(), "uploads")
+if os.path.exists(uploads_dir):
+    app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
+    logger.info(f"Mounted static files from: {uploads_dir}")
+    logger.info(f"Uploads directory contents: {os.listdir(uploads_dir)}")
+else:
+    logger.warning(f"Uploads directory not found: {uploads_dir}")
+    # Try to create it
+    os.makedirs(uploads_dir, exist_ok=True)
+    logger.info(f"Created uploads directory: {uploads_dir}")
+
 
 @app.get("/")
 async def root():
@@ -92,6 +82,26 @@ async def root():
         "version": settings.app_version,
         "status": "running"
     }
+
+@app.get("/debug/uploads")
+async def debug_uploads():
+    """Debug endpoint to check uploads directory."""
+    uploads_dir = os.path.join(os.getcwd(), "uploads")
+    if os.path.exists(uploads_dir):
+        files = os.listdir(uploads_dir)
+        return {
+            "uploads_dir": uploads_dir,
+            "exists": True,
+            "files": files,
+            "file_count": len(files)
+        }
+    else:
+        return {
+            "uploads_dir": uploads_dir,
+            "exists": False,
+            "files": [],
+            "file_count": 0
+        }
 
 
 if __name__ == "__main__":

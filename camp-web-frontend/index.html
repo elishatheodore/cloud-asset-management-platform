@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CAMP - Cloud Asset Management Platform</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <header class="header">
+        <div class="app-container">
+            <div class="header-content">
+                <div class="header-brand">
+                    <div class="header-title">
+                        <h1>Cloud Asset Management</h1>
+                        <p>Secure File Storage & Management</p>
+                    </div>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-primary" onclick="listFiles()">
+                        <i class="fas fa-list"></i>
+                        List Files
+                    </button>
+                    <button class="btn btn-secondary" onclick="checkHealth()">
+                        <i class="fas fa-heartbeat"></i>
+                        Health
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="notifications-container" id="notifications-container"></div>
+
+    <main class="app-container">
+        <!-- Upload Section -->
+        <div class="card">
+            <div class="card-header">
+                <h3>Upload File</h3>
+            </div>
+            <div class="card-body">
+                <div id="drop-zone" class="upload-area">
+                    <div id="upload-content">
+                        <i class="fas fa-cloud-upload-alt upload-icon"></i>
+                        <h3>Drag & Drop Your File Here</h3>
+                        <p>or</p>
+                        <button class="btn btn-primary" onclick="document.getElementById('file-input').click()">
+                            <i class="fas fa-folder-open"></i>
+                            Browse Files
+                        </button>
+                    </div>
+                </div>
+                <input type="file" id="file-input" style="display: none;">
+                <div id="upload-controls" style="display: none;">
+                    <div class="file-selection">
+                        <div class="file-info">
+                            <i class="fas fa-file"></i>
+                            <div>
+                                <h4 id="selected-filename">filename.txt</h4>
+                                <p id="selected-size">1.2 MB</p>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" onclick="uploadFile()">Upload</button>
+                        <button class="btn btn-secondary" onclick="clearFileSelection()">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Files Section -->
+        <div class="card">
+            <div class="card-header">
+                <h3>Files (<span id="files-count">0</span>)</h3>
+            </div>
+            <div class="card-body">
+                <div id="loading-state" style="display: none; text-align: center; padding: 2rem;">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Loading files...</p>
+                </div>
+                <div id="files-grid" class="files-grid">
+                    <!-- Files will be displayed here -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>

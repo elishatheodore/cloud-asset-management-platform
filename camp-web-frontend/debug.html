@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Image Loading</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .test-section {
+            margin: 2rem 0;
+            padding: 1rem;
+            background: #16213e;
+            border: 1px solid #0f3460;
+            border-radius: 8px;
+        }
+        .success { color: #27ae60; }
+        .error { color: #e74c3c; }
+        .warning { color: #f39c12; }
+        img {
+            max-width: 200px;
+            border: 2px solid #f39c12;
+            border-radius: 4px;
+            margin: 0.5rem;
+        }
+        button {
+            background: #f39c12;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 0.25rem;
+        }
+        button:hover { background: #e67e22; }
+        pre {
+            background: #0f3460;
+            padding: 1rem;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 0.9rem;
+        }
+        .url-display {
+            background: #1a1a2e;
+            padding: 0.5rem;
+            border-radius: 4px;
+            word-break: break-all;
+            font-family: monospace;
+            margin: 0.5rem 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Debug Image Loading</h1>
+    
+    <div class="test-section">
+        <h2>1. Test Backend Connection</h2>
+        <button onclick="testBackendHealth()">Test Backend Health</button>
+        <button onclick="testAPI()">Test API Files</button>
+        <button onclick="testUploads()">Test Uploads Directory</button>
+        <div id="backend-results"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. Test Image URLs</h2>
+        <button onclick="loadFilesAndTest()">Load Files & Test Images</button>
+        <div id="image-results"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. Manual URL Test</h2>
+        <input type="text" id="manualUrl" placeholder="http://localhost:8000/uploads/filename.jpg" style="width: 100%; padding: 0.5rem; margin: 0.5rem 0;">
+        <button onclick="testManualUrl()">Test URL</button>
+        <div id="manual-results"></div>
+    </div>
+
+    <script>
+        const BACKEND_URL = 'http://localhost:8000';
+        
+        async function testBackendHealth() {
+            const results = document.getElementById('backend-results');
+            results.innerHTML = '<p>Testing backend health...</p>';
+            
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/v1/`);
+                if (response.ok) {
+                    const data = await response.json();
+                    results.innerHTML = `
+                        <div class="success">✅ Backend Health: OK</div>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    results.innerHTML = `<div class="error">❌ Backend Health Failed: ${response.status}</div>`;
+                }
+            } catch (error) {
+                results.innerHTML = `<div class="error">❌ Backend Connection Error: ${error.message}</div>`;
+            }
+        }
+        
+        async function testAPI() {
+            const results = document.getElementById('backend-results');
+            results.innerHTML = '<p>Testing API files...</p>';
+            
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/v1/files`);
+                if (response.ok) {
+                    const data = await response.json();
+                    const imageFiles = data.assets.filter(f => f.content_type && f.content_type.startsWith('image/'));
+                    
+                    results.innerHTML = `
+                        <div class="success">✅ API Working</div>
+                        <p>Total files: ${data.total}</p>
+                        <p>Image files: ${imageFiles.length}</p>
+                        <div>
+                            ${imageFiles.slice(0, 3).map(file => `
+                                <div style="margin: 1rem 0; padding: 0.5rem; background: #1a1a2e; border-radius: 4px;">
+                                    <strong>${file.filename}</strong><br>
+                                    <small>Path: ${file.file_path}</small><br>
+                                    <small>Type: ${file.content_type}</small><br>
+                                    <small>Image URL: ${file.image_url || 'None'}</small>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                    
+                    // Store files for next test
+                    window.testFiles = data.assets;
+                } else {
+                    results.innerHTML = `<div class="error">❌ API Failed: ${response.status}</div>`;
+                }
+            } catch (error) {
+                results.innerHTML = `<div class="error">❌ API Error: ${error.message}</div>`;
+            }
+        }
+        
+        async function testUploads() {
+            const results = document.getElementById('backend-results');
+            results.innerHTML = '<p>Testing uploads directory...</p>';
+            
+            try {
+                const response = await fetch(`${BACKEND_URL}/uploads/`);
+                if (response.ok) {
+                    const text = await response.text();
+                    results.innerHTML = `
+                        <div class="success">✅ Uploads Directory Accessible</div>
+                        <p>Status: ${response.status}</p>
+                        <pre>${text.substring(0, 500)}...</pre>
+                    `;
+                } else {
+                    results.innerHTML = `<div class="error">❌ Uploads Directory Failed: ${response.status}</div>`;
+                }
+            } catch (error) {
+                results.innerHTML = `<div class="error">❌ Uploads Error: ${error.message}</div>`;
+            }
+        }
+        
+        async function loadFilesAndTest() {
+            const results = document.getElementById('image-results');
+            results.innerHTML = '<p>Loading files and testing images...</p>';
+            
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/v1/files`);
+                const data = await response.json();
+                const imageFiles = data.assets.filter(f => f.content_type && f.content_type.startsWith('image/'));
+                
+                let html = `<p>Found ${imageFiles.length} image files:</p>`;
+                
+                for (const file of imageFiles.slice(0, 5)) {
+                    // Extract filename from file_path
+                    const filename = file.file_path.split(/[\\\/]/).pop();
+                    const imageUrl = `${BACKEND_URL}/uploads/${filename}`;
+                    
+                    html += `
+                        <div style="margin: 1rem 0; padding: 1rem; background: #1a1a2e; border-radius: 4px;">
+                            <h4>${file.filename}</h4>
+                            <div class="url-display">URL: ${imageUrl}</div>
+                            <button onclick="testImageInNewTab('${imageUrl}')">Open in New Tab</button>
+                            <button onclick="testImageHere('${imageUrl}', '${file.filename}')">Test Here</button>
+                            <div id="test-${file.id}"></div>
+                        </div>
+                    `;
+                }
+                
+                results.innerHTML = html;
+                
+            } catch (error) {
+                results.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+        
+        async function testImageInNewTab(url) {
+            window.open(url, '_blank');
+        }
+        
+        async function testImageHere(url, filename) {
+            const testDiv = document.getElementById(`test-${filename.replace(/[^a-zA-Z0-9]/g, '')}`);
+            testDiv.innerHTML = '<p>Testing...</p>';
+            
+            try {
+                const response = await fetch(url);
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const imageUrl = URL.createObjectURL(blob);
+                    
+                    testDiv.innerHTML = `
+                        <div class="success">✅ Image Loaded Successfully!</div>
+                        <p>Size: ${blob.size} bytes</p>
+                        <p>Type: ${blob.type}</p>
+                        <img src="${imageUrl}" alt="${filename}">
+                        <a href="${url}" target="_blank">Open Original</a>
+                    `;
+                } else {
+                    const text = await response.text();
+                    testDiv.innerHTML = `
+                        <div class="error">❌ Failed to load image</div>
+                        <p>Status: ${response.status}</p>
+                        <pre>${text}</pre>
+                    `;
+                }
+            } catch (error) {
+                testDiv.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+        
+        async function testManualUrl() {
+            const url = document.getElementById('manualUrl').value;
+            const results = document.getElementById('manual-results');
+            
+            if (!url) {
+                results.innerHTML = '<p class="warning">Please enter a URL</p>';
+                return;
+            }
+            
+            results.innerHTML = '<p>Testing URL...</p>';
+            
+            try {
+                const response = await fetch(url);
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const imageUrl = URL.createObjectURL(blob);
+                    
+                    results.innerHTML = `
+                        <div class="success">✅ Image Loaded Successfully!</div>
+                        <p>Size: ${blob.size} bytes</p>
+                        <p>Type: ${blob.type}</p>
+                        <img src="${imageUrl}" alt="Test image">
+                        <a href="${url}" target="_blank">Open Original</a>
+                    `;
+                } else {
+                    const text = await response.text();
+                    results.innerHTML = `
+                        <div class="error">❌ Failed to load image</div>
+                        <p>Status: ${response.status}</p>
+                        <pre>${text}</pre>
+                    `;
+                }
+            } catch (error) {
+                results.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+        
+        // Auto-test on load
+        window.onload = function() {
+            console.log('🚀 Debug page loaded');
+            console.log('📋 Available functions:');
+            console.log('  testBackendHealth()');
+            console.log('  testAPI()');
+            console.log('  testUploads()');
+            console.log('  loadFilesAndTest()');
+        };
+    </script>
+</body>
+</html>

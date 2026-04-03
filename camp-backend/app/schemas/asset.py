@@ -30,6 +30,7 @@ class AssetResponse(AssetBase):
     file_path: str
     created_at: datetime
     updated_at: Optional[datetime] = None
+    image_url: Optional[str] = None
     
     class Config:
         from_attributes = True
