@@ -95,6 +95,17 @@ async def root():
         }
     }
 
+@app.get("/test")
+async def test_endpoint():
+    """Simple test endpoint to verify basic functionality."""
+    return {
+        "success": True,
+        "message": "Backend is working correctly",
+        "timestamp": datetime.utcnow().isoformat(),
+        "version": settings.app_version
+    }
+
+
 @app.get("/health")
 async def health_check():
     """Detailed health check endpoint."""
@@ -105,22 +116,33 @@ async def health_check():
             conn.execute("SELECT 1")
         db_status = "healthy"
     except Exception as e:
+        logger.error(f"Database health check failed: {str(e)}")
         db_status = f"unhealthy: {str(e)}"
     
     # Check uploads directory
     uploads_dir = os.path.join(os.getcwd(), "uploads")
     uploads_accessible = os.path.exists(uploads_dir) and os.access(uploads_dir, os.R_OK | os.W_OK)
     
+    # Check database file existence
+    db_file = os.path.join(os.getcwd(), "camp.db")
+    db_exists = os.path.exists(db_file)
+    
     return {
-        "status": "healthy" if db_status == "healthy" and uploads_accessible else "unhealthy",
+        "status": "healthy" if db_status == "healthy" and uploads_accessible and db_exists else "unhealthy",
         "timestamp": datetime.utcnow().isoformat(),
         "version": settings.app_version,
         "checks": {
             "database": db_status,
+            "database_file": "exists" if db_exists else "missing",
             "uploads": "accessible" if uploads_accessible else "not accessible",
             "api": "healthy"
         },
-        "environment": "development" if settings.debug else "production"
+        "environment": "development" if settings.debug else "production",
+        "paths": {
+            "working_dir": os.getcwd(),
+            "database_file": db_file,
+            "uploads_dir": uploads_dir
+        }
     }
 
 @app.get("/debug/uploads")

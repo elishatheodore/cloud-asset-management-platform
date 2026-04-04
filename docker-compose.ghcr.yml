@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  camp-backend:
+    image: ghcr.io/your-github-username/kubernetes-microservices/camp-backend:latest
+    container_name: camp-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./camp-backend/uploads:/app/uploads
+      - ./camp-backend/camp.db:/app/camp.db
+    environment:
+      - DATABASE_URL=sqlite:///./camp.db
+      - DEBUG=true
+      - LOG_LEVEL=info
+    networks:
+      - camp-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/test')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  camp-web:
+    image: ghcr.io/your-github-username/kubernetes-microservices/camp-web:latest
+    container_name: camp-web
+    ports:
+      - "3004:3004"
+    depends_on:
+      - camp-backend
+    networks:
+      - camp-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:3004')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  camp-auth:
+    image: ghcr.io/your-github-username/kubernetes-microservices/camp-auth:latest
+    container_name: camp-auth
+    ports:
+      - "3000:80"
+    depends_on:
+      - camp-backend
+    networks:
+      - camp-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  camp-network:
+    driver: bridge
+
+volumes:
+  camp-uploads:
+    driver: local
+  camp-database:
+    driver: local
